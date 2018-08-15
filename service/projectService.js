@@ -11,6 +11,21 @@ module.exports.getProjects =  function(callback){
         }
     });
 }
+module.exports.getProjectsPage =  function(page, perPage, callback){
+    console.log(page);
+    console.log(perPage);
+    
+    Project.find({}).skip((perPage * page) - perPage).limit(perPage).exec(function(err, projects){
+        if(err){
+            console.log(JSON.stringify(err));
+            callback(err, null);
+
+        }else if (projects){
+          console.log(JSON.stringify(projects));
+          callback(null, projects);
+        }
+    });
+}
 
 module.exports.getProjectByAlias =  function(alias, callback){
     Project.findOne({'alias': alias}, function(err, project){

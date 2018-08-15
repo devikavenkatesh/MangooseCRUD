@@ -2,10 +2,10 @@ var express = require('express');
 var data = require('../mydata.json');
 var path = require('path');
 var fs = require('fs');
+var unzip = require('unzip');
 var projectService = require('../service/projectService');
 var mediaService = require('../service/mediaService');
 var router = express.Router();
-
 
 function getBlog(alias){
   if(alias){
@@ -32,7 +32,25 @@ router.get('/projects', function (req, res, next) {
       projects: data
     });
   };
-  projectService.getProjects(listProjects);
+  //projectService.getProjects(listProjects);
+  projectService.getProjectsPage(1, 5, listProjects);
+});
+
+router.get('/projects/paging/:page', function(req, res, next) {
+  console.log("projectsPagination")
+  var perPage = 5;
+  var page = req.params.page || 1;
+  //var page = 1;
+  function listProjects(error, data){
+    res.render('admin/projects', { 
+      layout: 'layout-admin', 
+      title: 'Projects Admin',
+      navProjects: true,
+      projects: data
+    });
+  };
+  projectService.getProjectsPage(page, perPage, listProjects);
+
 });
 
 router.get('/projects/create', function (req, res, next) {
@@ -81,10 +99,8 @@ router.get('/projects/:projectAlias/delete', function (req, res) {
   var pAlias = req.params.projectAlias;
   function deleteProject(error, data){
     if(error){
-      console.log(error);
+      // do something
     }else{
-      //var dir = path.join(__dirname, '../public/projects/'+ pAlias+ '/images');
-      //mediaService.deleteMedia(req, res, dir, callback);
       res.redirect('/admin/projects')
     }
   }
@@ -95,7 +111,7 @@ router.get('/projects/:projectAlias/upload', function (req, res) {
   var pAlias = req.params.projectAlias;
   res.render('admin/upload', { 
     layout: 'layout-admin', 
-    title: 'Image Upload',
+    title: 'Upload Cover Image',
     navProjects: true,
     actionUrl: '/admin/projects/'+ pAlias+ '/upload'
   });
@@ -103,10 +119,12 @@ router.get('/projects/:projectAlias/upload', function (req, res) {
 
 router.post('/projects/:projectAlias/upload', function (req, res, next) {
   var pAlias = req.params.projectAlias;
-  var dir = path.join(__dirname, '../public/projects/'+ pAlias+ '/images');
+  var dir = path.join(__dirname, '../public/images/projects');
   var finishUpload = function (err, data){
     if(err){
-      throw new Error('errro...');
+      //throw new Error('errro...');
+      console.log(err)
+      res.render('404');
     }else{
       res.redirect('/admin/projects/' + pAlias);
     }
@@ -116,11 +134,41 @@ router.post('/projects/:projectAlias/upload', function (req, res, next) {
     if(error){
       console.log(error);
     }else{
-      projectService.update(pAlias, { image: '/projects/'+ pAlias+ '/images/' + pAlias + '.png'}, finishUpload);
+      projectService.update(pAlias, { image: '/images/projects/'+ pAlias + '.png'}, finishUpload);
     }
   };
   
   mediaService.uploadMedia(req, res, dir, pAlias + '.png', callback);
+});
+
+router.get('/projects/:projectAlias/uploaddemo', function (req, res) {
+  var pAlias = req.params.projectAlias;
+  res.render('admin/upload', { 
+    layout: 'layout-admin', 
+    title: 'Upload demo project',
+    navProjects: true,
+    actionUrl: '/admin/projects/'+ pAlias+ '/uploaddemo'
+  });
+});
+
+router.post('/projects/:projectAlias/uploaddemo', function (req, res, next) {
+  var pAlias = req.params.projectAlias;
+  var dir = path.join(__dirname, '../public/project-demos/'+ pAlias);
+  var finishUpload = function (err, data){
+    if(err){
+      console.error(err)
+      throw new Error('errro...');
+    }else{
+      // unzip the contents to the same folder
+      var zipfile = dir + '/' + pAlias + '.zip';
+      // how to handle this error???
+      fs.createReadStream(zipfile).pipe(unzip.Extract({ path: dir }));
+      fs.unlinkSync(zipfile);
+      res.redirect('/admin/projects/' + pAlias);
+    }
+  };
+  
+  mediaService.uploadMedia(req, res, dir, pAlias + '.zip', finishUpload);
 });
 
 
